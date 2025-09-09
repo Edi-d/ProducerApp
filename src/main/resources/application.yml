@@ -1,6 +1,10 @@
 server:
   port: 8081
 
+app:
+  jwtSecret: iceCreamShopSecretKeyForEdiJWTTokenGeneration2025
+  jwtExpirationMs: 86400000 # 24 hours in milliseconds
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/icecreamshop
