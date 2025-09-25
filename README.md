@@ -1,228 +1,140 @@
-# Ice Cream Shop - Kafka Spring Boot Application
+# 🍦 Ice Cream Shop — Event-Driven Orders & Observability
 
-## Descriere
-Aplicație Spring Boot pentru gestionarea comenzilor de înghețată folosind Apache Kafka pentru messaging și PostgreSQL pentru persistența datelor.
+<img width="1512" height="825" alt="Screenshot 2025-09-25 at 16 25 20" src="https://github.com/user-attachments/assets/920b20e4-06eb-41f8-8910-2cf2108152dd" />
 
-## Tehnologii utilizate
-- **Spring Boot 3.5.4** - Framework principal
-- **Apache Kafka** - Message broker pentru evenimente asincrone
-- **PostgreSQL** - Baza de date relațională
-- **Spring Data JPA** - Persistence layer
-- **Docker Compose** - Container orchestration
-- **Maven** - Build tool
+> A showcase microservice built with **Spring Boot** that manages ice-cream orders, demonstrates **JWT authentication & authorization**, **PostgreSQL** persistence, optional **Kafka** for event-driven flows, and end-to-end **observability** with **Micrometer → Prometheus → Grafana**. Designed to highlight secure APIs, clean domain modeling, and production-grade telemetry.
 
-## Structura proiectului
-```
-src/main/java/com/example/icecreamshop/
-├── dto/                    # Data Transfer Objects
-│   ├── OrderDto.java
-│   └── OrderItemDto.java
-├── entity/                 # JPA Entities
-│   ├── Order.java
-│   ├── OrderItem.java
-│   └── OrderStatus.java
-├── repository/             # Data Access Layer
-│   └── OrderRepository.java
-├── service/                # Business Logic
-│   ├── OrderService.java
-│   └── OrderProcessingService.java
-├── controller/             # REST Controllers
-│   └── OrderController.java
-├── consumer/               # Kafka Consumers
-│   └── OrderEventConsumer.java
-└── config/                 # Configuration
-    └── KafkaProducerConfig.java
-```
+---
 
-## Setup și Instalare
+## 🔑 Elevator Pitch
 
-### 1. Clonează repository-ul
-```bash
-git clone <repository-url>
-cd ice-cream-shop
+Many CRUD apps lack real-time visibility and don’t scale cleanly to async flows.
+**Ice Cream Shop** is an opinionated *orders* service that combines a secure REST API, robust persistence, and enterprise-level observability. It’s built to **tell a story** in interviews and portfolios: security, quality, and insight.
+
+---
+
+## ✨ Highlights
+
+* **Security first:** JWT + roles (User/Admin), clear 401 vs 403 behavior, protected routes.
+* **Observability first:** business metrics (login attempts, heartbeat, active orders), JVM & HTTP metrics, clean Grafana dashboard.
+* **Event-Driven ready:** Kafka producer/consumer for order events, with a documented “no-Kafka” demo mode.
+* **Clean domain:** separate DTOs & entities, explicit `Order`, `OrderItem`, `OrderStatus`.
+* **DX for demos:** Postman collection with auto-token setup and story-driven requests (auth → access control → monitoring).
+
+---
+
+## 🧩 Architecture (at a glance)
+
+```mermaid
+flowchart LR
+  Client[Postman / UI] -->|JWT| API[Spring Boot API]
+  API -->|CRUD| DB[(PostgreSQL)]
+  API -->|/actuator/prometheus| Prometheus[(Prometheus)]
+  Prometheus --> Grafana[Grafana Dashboards]
+
+  subgraph Optional Async
+    API -->|OrderCreated Event| Kafka((Kafka))
+    Kafka --> Consumer[OrderEventConsumer]
+    Consumer --> Service[OrderProcessingService]
+    Service --> DB
+  end
 ```
 
-### 2. Pornește serviciile Docker
-```bash
-docker-compose up -d
-```
+* **Bounded Context:** Orders
+* **Security:** Spring Security + JWT (role-based)
+* **Persistence:** JPA/Hibernate + PostgreSQL
+* **Telemetry:** Micrometer + Actuator → Prometheus → Grafana
+* **Messaging (optional):** Kafka topic `order-events`
 
-Serviciile care vor porni:
-- **Kafka** - port 9092
-- **Zookeeper** - port 2181  
-- **PostgreSQL** - port 5432
-- **Kafka UI** - port 8080
+---
 
-### 3. Verifică serviciile
-```bash
-docker-compose ps
-```
+## 🧠 Domain & API (short)
 
-### 4. Pornește aplicația Spring Boot
-```bash
-./mvnw spring-boot:run
-```
+* **Entities**
+  `Order { orderId, customerName, customerEmail, totalAmount, status, items[] }`
+  `OrderItem { flavor, size, quantity, pricePerUnit }`
+  `OrderStatus ∈ { PENDING, PROCESSING, COMPLETED, CANCELLED }`
+* **Key flows**
+  **Auth:** Signup / Signin → JWT
+  **Orders:** list, get by id, update status (admin only)
+  **Ops:** `/actuator/health`, `/actuator/metrics`, `/actuator/prometheus`
+* **Authorization demo**
+  User → `PUT /orders/{id}/status` ⇒ **403**
+  Admin → same request ⇒ **200**
 
-Aplicația va porni pe portul **8081**.
+---
 
-## API Endpoints
+## 📊 Observability (what I measure & why)
 
-### Health Check
-```bash
-GET http://localhost:8081/api/orders/health
-```
+* **Business KPIs**
+  `icecream.login.attempts.total` — authentication activity
+  `icecream.active.orders` — current gauge
+  `icecream_periodic_heartbeat_total` — liveness/heartbeat
+* **Platform metrics**
+  `http_server_requests_seconds_*` (rates by status 200/401/403/404)
+  `process_uptime_seconds` (shown in hours)
+  `jvm_memory_used_bytes` / `jvm_memory_max_bytes`
 
-### Creează o comandă nouă
-```bash
-POST http://localhost:8081/api/orders
-Content-Type: application/json
+**Dashboard snapshot**: Uptime • Heartbeat rate • Login attempts • HTTP rate by status • JVM Heap %
 
-{
-  "customerName": "John Doe",
-  "customerEmail": "john@example.com",
-  "items": [
-    {
-      "flavor": "Vanilla",
-      "size": "Large",
-      "quantity": 2,
-      "pricePerUnit": 5.99
-    },
-    {
-      "flavor": "Chocolate",
-      "size": "Medium",
-      "quantity": 1,
-      "pricePerUnit": 4.99
-    }
-  ],
-  "totalAmount": 16.97
-}
-```
+---
 
-### Obține toate comenzile
-```bash
-GET http://localhost:8081/api/orders
-```
+## 🎬 “Story Demo” (what I show to reviewers)
 
-### Obține o comandă după ID
-```bash
-GET http://localhost:8081/api/orders/{orderId}
-```
+1. **Auth:** Sign In → *Login Attempts* rises in Grafana.
+2. **Security:** GET Orders without token ⇒ **401**; with user token ⇒ **200**.
+3. **Authorization:** User tries to update status ⇒ **403**; Admin ⇒ **200**.
+4. **Health:** Uptime climbs; Heartbeat stays steady; HTTP rate reacts to actions.
+5. **Kafka (optional):** explain event-driven decoupling, scaling, retries; show graceful fallback when broker is off.
 
-### Actualizează statusul unei comenzi
-```bash
-PUT http://localhost:8081/api/orders/{orderId}/status?status=PROCESSING
-```
+> The goal is to **demonstrate design maturity**, not just endpoints.
 
-Statusuri disponibile: `PENDING`, `PROCESSING`, `COMPLETED`, `CANCELLED`
+---
 
-## Testare cu cURL
+## 🏗️ Tech Stack
 
-```bash
-# Creează o comandă
-curl -X POST http://localhost:8081/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customerName": "John Doe",
-    "customerEmail": "john@example.com",
-    "items": [
-      {
-        "flavor": "Vanilla",
-        "size": "Large",
-        "quantity": 2,
-        "pricePerUnit": 5.99
-      }
-    ],
-    "totalAmount": 11.98
-  }'
+**Java 17, Spring Boot 3.5.4, Spring Security (JWT), Spring Data JPA, PostgreSQL, Kafka (optional), Micrometer, Spring Actuator, Prometheus, Grafana, Maven, Docker Compose, Postman.**
 
-# Obține toate comenzile
-curl http://localhost:8081/api/orders
+---
 
-# Health check
-curl http://localhost:8081/api/orders/health
-```
+## 🔬 Code Quality & Practices
 
-## Monitorizare și Debugging
+* Layered architecture; DTOs ≠ Entities
+* Input validation & consistent error handling
+* 12-factor configuration
+* Observability-first (useful labels, actionable panels)
+* Security-first (role-based access, least privilege)
 
-### Kafka UI
-Accesează [http://localhost:8080](http://localhost:8080) pentru a vedea:
-- Topics Kafka
-- Messages și offseturi
-- Consumer groups
+---
 
-### PostgreSQL
-Conectează-te la baza de date:
-```bash
-docker exec -it postgres psql -U user -d icecreamshop
+## 🛠️ Challenges & Lessons
 
-# Verifică tabelele
-\dt
-SELECT * FROM orders;
-SELECT * FROM order_items;
-```
+* Clear UX for **401 vs 403** in real demos.
+* Designing a **no-Kafka mode** so business logic isn’t hard-coupled to the broker.
+* **Observability that tells a story**: choosing metrics that reflect business behavior, not only infra.
+* Minimal, readable Grafana panels with meaningful time windows and refresh.
 
-### Logs aplicație
-Aplicația folosește logging la nivel DEBUG pentru pachetul `com.example.icecreamshop`. Logs-urile vor afișa:
-- Comenzi create și procesate
-- Evenimente Kafka primite
-- Operații pe baza de date
+---
 
-## Arhitectura aplicației
+## 🚀 Roadmap
 
-### Flow principal:
-1. **Client** → POST `/api/orders` → **OrderController**
-2. **OrderController** → **OrderService** → salvează în **PostgreSQL**
-3. **OrderService** → publică mesaj în **Kafka** topic `order-events`
-4. **OrderEventConsumer** → consumă mesajul din Kafka
-5. **OrderProcessingService** → procesează comanda (business logic)
+* Swagger/OpenAPI UI
+* Testcontainers for integration (DB + Kafka)
+* Grafana alerting (4xx/5xx spikes, error budgets)
+* Mock producer for graceful no-Kafka operation
+* Rate limits & audit trail
 
-### Event-driven architecture:
-- Fiecare comandă creată/actualizată generează un eveniment Kafka
-- Consumer-ul procesează evenimentele asincron
-- Permite scalabilitate și decuplare
+---
 
-## Dezvoltare
+## 📁 Repo Assets
 
-### Rulare în modul dezvoltare
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-```
+* `Ice-Cream-Shop-API.postman_collection.json` — Postman collection
+* `grafana-dashboard.json` — importable Grafana dashboard
 
-### Teste
-```bash
-./mvnw test
-```
+---
 
-### Package aplicația
-```bash
-./mvnw clean package
-java -jar target/ice-cream-shop-0.0.1-SNAPSHOT.jar
-```
+## 👤 Author
 
-## Troubleshooting
+**Eduard Drăghici** — Business × IT; security, observability, and pragmatic architecture.
 
-### Docker nu pornește
-- Verifică că Docker Desktop rulează
-- Verifică că porturile nu sunt ocupate
-
-### Kafka connection failed  
-- Verifică că toate containerele rulează: `docker-compose ps`
-- Restart serviciile: `docker-compose restart`
-
-### Aplicația nu se conectează la PostgreSQL
-- Verifică că PostgreSQL container rulează
-- Verifică configurația din `application.yml`
-
-### Reset complet
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-
-## Extensii viitoare
-- Order status updates prin email notifications
-- Inventory management system
-- Customer management
-- Metrics și monitoring cu Prometheus/Grafana
-- API documentation cu Swagger/OpenAPI
-- Integration tests cu Testcontainers 
+> *This project is built to showcase how I approach **security**, **observability**, and **modularity** in a service that is small, but “production-ready by design.”*
